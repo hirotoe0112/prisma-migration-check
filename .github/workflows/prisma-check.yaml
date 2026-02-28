@@ -27,7 +27,6 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shadow
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,10 +34,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-
-      # 整合性チェック用のシャドウDBを作成
-      # - name: Create shadow database
-      #  run: psql postgresql://postgres:postgres@localhost:5432/testdb -c "CREATE DATABASE shadow;"
 
       # スキーマファイルの構文チェック
       - name: Validate schema syntax
@@ -49,10 +44,10 @@ jobs:
         run: npx prisma migrate deploy
 
       # スキーマファイルとマイグレーションファイルの整合性チェック
+      # migrate deployで適用済みのDBとスキーマを比較する
       - name: Check schema / migration consistency
         run: |
           npx prisma migrate diff \
-            --from-migrations ./prisma/migrations \
+            --from-config-datasource \
             --to-schema ./prisma/schema.prisma \
-            --shadow-database-url $SHADOW_DATABASE_URL \
             --exit-code
