@@ -1,0 +1,52 @@
+name: Prisma Check
+
+# プルリクオープン／更新時に発動
+on:
+  pull_request:
+
+jobs:
+  prisma-check:
+    name: Prisma Check
+    runs-on: ubuntu-latest
+    services:
+      # PostgreSQLをインストール
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        # PostgreSQLのヘルスチェックを10秒間隔で5回実行する
+        # 各ヘルスチェックのタイムアウトは5秒とする
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      # スキーマファイルの構文チェック
+      - name: Validate schema syntax
+        run: npx prisma validate
+
+      # マイグレーションファイルのSQL構文チェック
+      - name: Check migration SQL syntax
+        run: npx prisma migrate deploy
+
+      # スキーマファイルとマイグレーションファイルの整合性チェック
+      - name: Check schema / migration consistency
+        run: |
+          npx prisma migrate diff \
+            --from-migrations ./prisma/migrations \
+            --to-schema ./prisma/schema.prisma \
+            --exit-code
