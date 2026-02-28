@@ -48,6 +48,6 @@ jobs:
       - name: Check schema / migration consistency
         run: |
           npx prisma migrate diff \
-            --from-config-datasource \
-            --to-schema ./prisma/schema.prisma \
+            --from-schema-datasource ./prisma/schema.prisma \
+            --to-schema-datamodel ./prisma/schema.prisma \
             --exit-code
